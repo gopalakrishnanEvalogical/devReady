@@ -176,11 +176,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     fix = sub.add_parser("fix", help="print suggested fixes (never runs them)")
     fix.add_argument("--plan", action="store_true", help="required: list steps without running")
+    doctor = sub.add_parser(
+        "doctor", help="diagnose problems: what failed, what it means, what to try (read-only)"
+    )
     explain = sub.add_parser("explain", help="explain what a check id means")
     explain.add_argument("check_id")
     sub.add_parser("init", help="print a starter .devready.json (does not write it)")
     sub.add_parser("mcp", help="run as an MCP server over stdio")
-    for p in (check, fix):
+    for p in (check, fix, doctor):
         p.add_argument("--project", default=".", help="directory whose version pins to compare")
         p.add_argument("--only", action="append", default=[], metavar="ID", help="check id/prefix")
         p.add_argument("--skip", action="append", default=[], metavar="ID", help="check id/prefix")
@@ -223,7 +226,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"devready: not a directory: {args.project}", file=sys.stderr)
         return EXIT_USAGE
     # (path, results) pairs: one per package with --recursive, else one with path "".
-    recursive = getattr(args, "recursive", False)  # `fix` has no --recursive
+    recursive = getattr(args, "recursive", False)  # `fix`/`doctor` have no --recursive
     try:
         projects, found = run_recursive(root) if recursive else ([("", run_checks(root))], 1)
     except Exception as e:  # noqa: BLE001 - last-resort guard; never leak raw output
@@ -239,6 +242,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "fix":
         print(fix_plan(projects[0][1]))
         return EXIT_OK
+
+    if args.command == "doctor":
+        from devready.doctor import doctor_report
+
+        print(doctor_report(projects[0][1], _width()))
+        return EXIT_FAILED if any(r.status is Status.FAIL for r in projects[0][1]) else EXIT_OK
 
     regressed = None
     if args.baseline:

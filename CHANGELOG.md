@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready doctor [--project DIR] [--only ID] [--skip ID]`: one read-only report with each failure and warning, what it means (from `explain`) and the suggested fix (same text as `fix --plan`), plus counts with skipped/errored checks shown as "not evaluated". Exit code matches `check`. No change to `check`, JSON schema, ids or exit codes.
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.
