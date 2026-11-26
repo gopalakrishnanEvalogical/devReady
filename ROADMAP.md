@@ -44,6 +44,7 @@ Principles: read-only, local-first, zero runtime dependencies, Python >= 3.10, n
 - [x] Monorepo `--recursive` (#43): workspace discovery, machine-wide checks once and project checks per package, every output format, `--baseline`, Action `recursive` input, MCP `recursive` argument.
 - [ ] Org `--policy` file (#44). Next; it can apply to every package `--recursive` finds.
 - [ ] VS Code extension (#45).
+- [x] `devready diff`: compare two saved JSON reports, for example CI against a laptop.
 
 The Docker checks from the same plan have shipped. Design and PR breakdown: [docs/plans/features-5-8.md](docs/plans/features-5-8.md).
 

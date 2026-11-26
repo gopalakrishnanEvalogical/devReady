@@ -58,3 +58,29 @@ def diff(results: list[Result], base: dict[str, Status]) -> tuple[list[Result], 
         for r in changed
     )
     return changed, worse
+
+
+def _entries(results: list) -> dict[str, tuple[Status, str]]:
+    """check_id -> (status, summary); entries with an invalid id are dropped."""
+    out = {}
+    for r in results:
+        cid = r["check_id"]
+        if isinstance(cid, str) and _ID.match(cid):
+            summary = r["summary"] if isinstance(r["summary"], str) else ""
+            out[cid] = (Status(r["status"]), summary)
+    return out
+
+
+def load_report(path: Path) -> tuple[bool, dict[str, dict[str, tuple[Status, str]]]] | None:
+    """(is --recursive report, package path -> check_id -> (status, summary)), or None.
+
+    A plain report is returned under the package path "". None when the file is missing, too
+    big, a symlink or not a v1 report. Summaries are untrusted: callers compare, never print.
+    """
+    try:
+        data = _report(path)
+        if "projects" in data:
+            return True, {str(p["path"]): _entries(p["results"]) for p in data["projects"]}
+        return False, {"": _entries(data["results"])}
+    except (ValueError, KeyError, TypeError):
+        return None

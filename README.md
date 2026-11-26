@@ -137,10 +137,13 @@ devready check --only project --skip project.ports   # filter by id or prefix
 devready fix --plan               # suggested steps only; never runs them
 devready check --format json > baseline.json   # save a snapshot (commit it for a team baseline)
 devready check --baseline baseline.json          # show only what changed; fail only on new/worse failures
+devready diff ci.json mine.json   # compare two saved reports (CI vs this machine); reads files only
 devready init > .devready.json    # optional config: skip ids, require node/python, required env names
 devready mcp                      # run as an MCP server over stdio
 devready --version
 ```
+
+**Works in CI, fails on my machine?** Save a report on each machine (`devready check --format json > mine.json`), then run `devready diff ci.json mine.json`. It lists only the checks that differ, exits `1` on a new or worse failure, and prints only check ids and statuses, never text from the files.
 
 | Exit code | Meaning |
 |---|---|

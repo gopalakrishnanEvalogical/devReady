@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready diff REFERENCE.json ACTUAL.json`: compares two saved `check --format json` reports (plain or `--recursive`) and lists only the checks that differ (regression, improvement, now/not evaluated, new, missing, details differ). Exit 1 on a new or worse failure like `--baseline`, 2 for unreadable or mismatched files. Prints only check ids, statuses and fixed words, never summary text from the files. Reads files only; `check` and `--baseline` are unchanged.
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.

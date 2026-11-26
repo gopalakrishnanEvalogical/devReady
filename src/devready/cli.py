@@ -24,6 +24,11 @@ EXIT_CODES = """exit codes (check):
   2  invalid usage
   3  internal error"""
 
+DIFF_EXIT_CODES = """exit codes (diff):
+  0  no check is a new or worse failure in ACTUAL
+  1  a check is a new or worse failure in ACTUAL
+  2  a file is not a readable report, or invalid usage"""
+
 
 _COLORS = {
     Status.PASS: "32",
@@ -176,6 +181,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     fix = sub.add_parser("fix", help="print suggested fixes (never runs them)")
     fix.add_argument("--plan", action="store_true", help="required: list steps without running")
+    diffp = sub.add_parser(
+        "diff",
+        help="compare two saved `check --format json` reports (reads files only)",
+        epilog=DIFF_EXIT_CODES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    diffp.add_argument("reference", help="saved report to compare against (for example from CI)")
+    diffp.add_argument("actual", help="saved report to compare (for example from this machine)")
     explain = sub.add_parser("explain", help="explain what a check id means")
     explain.add_argument("check_id")
     sub.add_parser("init", help="print a starter .devready.json (does not write it)")
@@ -200,6 +213,20 @@ def main(argv: list[str] | None = None) -> int:
 
         print(TEMPLATE)
         return EXIT_OK
+
+    if args.command == "diff":
+        from devready.diffcmd import diff_reports
+
+        out = diff_reports(Path(args.reference), Path(args.actual))
+        if out is None:
+            print(
+                "devready: both files must be readable devready JSON reports of the same kind "
+                "(plain or --recursive)",
+                file=sys.stderr,
+            )
+            return EXIT_USAGE
+        print(out[0])
+        return EXIT_FAILED if out[1] else EXIT_OK
 
     if args.command == "explain":
         from devready.explain import EXPLANATIONS
