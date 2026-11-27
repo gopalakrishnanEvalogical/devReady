@@ -7,6 +7,7 @@ from devready.checks.config import check_config, load_config
 from devready.checks.extras import check_disk, check_docker, check_git_identity
 from devready.checks.health import check_health
 from devready.checks.platform_checks import check_platform
+from devready.checks.policy import check_policy
 from devready.checks.project import check_project
 from devready.checks.python_check import check_python
 from devready.checks.runtimes import check_runtimes
@@ -32,12 +33,17 @@ def machine_checks(root: Path) -> tuple[list[Result], dict[str, str | None]]:
 
 
 def project_checks(
-    root: Path, versions: dict[str, str | None], machine: Sequence[Result] = ()
+    root: Path,
+    versions: dict[str, str | None],
+    machine: Sequence[Result] = (),
+    policy: dict | None = None,
+    probed: dict | None = None,
 ) -> list[Result]:
     """Checks that read files in `root`: Python/.venv, pins, health, Docker files, platform, config.
 
     `machine` results (if any) are placed right after Python, the order users know. Everything
-    returned is filtered by the `skip` list in root's `.devready.json`.
+    returned is filtered by the `skip` list in root's `.devready.json`, which cannot skip
+    `policy.*` results. A valid org `policy` (--policy) adds `policy.*` results and its own `skip`.
     """
     cfg, cfg_error = load_config(root)
     py_result, py_version = check_python(root)
@@ -46,13 +52,22 @@ def project_checks(
     results += check_runtimes(root) + check_health(root)
     results += check_docker(root) + check_platform(root)
     results += [cfg_error] if cfg_error else check_config(cfg, node, py_version)
+    if policy:
+        results += check_policy(policy, (py_result, py_version), {} if probed is None else probed)
     skip = (cfg or {}).get("skip", [])
-    return [r for r in results if not matches(r.check_id, skip)]
+    policy_skip = (policy or {}).get("skip", [])
+    return [
+        r
+        for r in results
+        if (r.check_id.startswith("policy.") or not matches(r.check_id, skip))
+        and not matches(r.check_id, policy_skip)
+    ]
 
 
-def run_checks(root: Path) -> list[Result]:
+def run_checks(root: Path, policy: dict | None = None) -> list[Result]:
     machine, versions = machine_checks(root)
-    return project_checks(root, versions, machine)
+    extra = (policy,) if policy else ()  # callers without a policy keep the old call shape
+    return project_checks(root, versions, machine, *extra)
 
 
 # Results about the machine that project files only trigger: with --recursive, an identical one
@@ -63,7 +78,9 @@ MACHINE_IDS = {
 }  # fmt: skip
 
 
-def run_recursive(root: Path) -> tuple[list[tuple[str, list[Result]]], int]:
+def run_recursive(
+    root: Path, policy: dict | None = None
+) -> tuple[list[tuple[str, list[Result]]], int]:
     """Machine-wide checks once (reported under "."), then project checks once per package.
 
     Checks at most MAX_PACKAGES packages; also returns how many were found, so callers can say so.
@@ -72,12 +89,13 @@ def run_recursive(root: Path) -> tuple[list[tuple[str, list[Result]]], int]:
     packages = discover_packages(root)
     machine, versions = machine_checks(root)
     seen: set[tuple] = set()
+    extra = (policy, {}) if policy else ()  # {}: policy tools are probed once for all packages
     out = []
     for p in packages[:MAX_PACKAGES]:
         kept = []
-        for r in project_checks(root / p, versions, machine if p == "." else ()):
+        for r in project_checks(root / p, versions, machine if p == "." else (), *extra):
             key = (r.check_id, r.status, r.summary)
-            if r.check_id in MACHINE_IDS and key in seen:
+            if (r.check_id in MACHINE_IDS or r.check_id.startswith("policy.")) and key in seen:
                 continue
             seen.add(key)
             kept.append(r)

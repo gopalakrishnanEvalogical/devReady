@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready check --policy FILE` (also `fix --plan`; or set `DEVREADY_POLICY`) applies an org policy file (`policy_version` 1 with `require`, `skip`, `env`) on top of each project's `.devready.json`, and to every package with `--recursive` (#44). New ids `policy.<tool>.require`, `policy.env.required` and `policy.file`. A required tool that is not installed fails; one whose version cannot be read is `skip` (not evaluated). A repo's `.devready.json` `skip` cannot hide `policy.*` results. Local paths only, URLs are never fetched. Without the flag nothing changes.
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.

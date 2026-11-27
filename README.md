@@ -135,6 +135,7 @@ devready explain docker.daemon    # what a check means and how to fix it
 devready check --format junit     # or sarif, for CI
 devready check --only project --skip project.ports   # filter by id or prefix
 devready fix --plan               # suggested steps only; never runs them
+devready check --policy org.json  # also apply an org policy file (see below)
 devready check --format json > baseline.json   # save a snapshot (commit it for a team baseline)
 devready check --baseline baseline.json          # show only what changed; fail only on new/worse failures
 devready init > .devready.json    # optional config: skip ids, require node/python, required env names
@@ -198,6 +199,29 @@ devready check --recursive --quiet  # only packages with something to report
 - **Output:** a text section per package. `--format json` follows [`docs/schema-multi.json`](docs/schema-multi.json): `{"schema_version": 1, "projects": [{"path": "apps/web", "results": [...]}]}`, where `"."` is the root and each `results` item has the usual shape. SARIF and JUnit name the package; `--baseline` takes a saved `--recursive` report and compares package by package.
 - **Exit code** `1` when any package has a `fail`.
 - **Limits:** at most 200 packages (stderr says when more were found). Only folder names made of letters, digits and `_ . @ + -` count, symlinks are never followed, and negated patterns (`!**/test/**`) are ignored.
+
+### Org policy file
+
+One file can set the minimum toolchain for every repository, instead of copying the same rules into each `.devready.json`:
+
+```json
+{
+  "policy_version": 1,
+  "require": { "node": ">=20", "python": ">=3.11", "git": ">=2.40", "docker": "*" },
+  "skip": ["platform.autocrlf"],
+  "env": ["NPM_TOKEN"]
+}
+```
+
+```bash
+devready check --policy org-policy.json            # or: DEVREADY_POLICY=org-policy.json devready check
+devready check --policy org-policy.json --recursive  # applies to every package
+```
+
+- **`require`:** any tool DevReady knows (git, node, npm, python, docker, go, ruby, java, rust, dotnet, pnpm, yarn, bun, terraform, deno, php, dart). `"*"` means "must be installed". Results are `policy.<tool>.require`. A missing tool fails; a tool whose version can't be read is `skip` ("not evaluated"), never `pass`.
+- **`skip` and `env`:** the policy's `skip` is added to the project's; `env` names must be set (values are never read), as `policy.env.required`.
+- **Precedence:** policy results can't be hidden by a repo's `.devready.json` `skip`. Both the policy and the project's own `require` must be satisfied.
+- **Safety:** a local file path only; URLs are never fetched (download the file in CI first). An invalid or missing file gives one `policy.file` error and the run continues without it. Without `--policy` nothing changes.
 
 ## Use it in CI (GitHub Actions)
 
@@ -315,7 +339,8 @@ See [docs/security.md](docs/security.md) for the model, [docs/versioning.md](doc
 - [x] Docker compose validity, image platform, Docker Desktop engine
 - [x] Exact version-switch commands in suggestions (first: `fnm`)
 - [x] Monorepo `--recursive` (#43)
-- [ ] Org `--policy` file (#44), VS Code extension (#45) (see [ROADMAP.md](ROADMAP.md))
+- [x] Org `--policy` file (#44)
+- [ ] VS Code extension (#45) (see [ROADMAP.md](ROADMAP.md))
 - [x] pre-commit hook (#32)
 - [ ] Homebrew tap (#31)
 - [ ] Standalone binaries

@@ -180,6 +180,11 @@ def main(argv: list[str] | None = None) -> int:
     explain.add_argument("check_id")
     sub.add_parser("init", help="print a starter .devready.json (does not write it)")
     sub.add_parser("mcp", help="run as an MCP server over stdio")
+    policy_help = (
+        "org policy file (local path; or set DEVREADY_POLICY): extra requirements for this run"
+    )
+    for p in (check, fix):
+        p.add_argument("--policy", metavar="FILE", help=policy_help)
     for p in (check, fix):
         p.add_argument("--project", default=".", help="directory whose version pins to compare")
         p.add_argument("--only", action="append", default=[], metavar="ID", help="check id/prefix")
@@ -222,13 +227,22 @@ def main(argv: list[str] | None = None) -> int:
     if not root.is_dir():
         print(f"devready: not a directory: {args.project}", file=sys.stderr)
         return EXIT_USAGE
+    policy, policy_error = None, None
+    if policy_path := (args.policy or os.environ.get("DEVREADY_POLICY")):
+        from devready.checks.policy import load_policy
+
+        policy, policy_error = load_policy(Path(policy_path))  # local files only, never a URL
     # (path, results) pairs: one per package with --recursive, else one with path "".
     recursive = getattr(args, "recursive", False)  # `fix` has no --recursive
     try:
-        projects, found = run_recursive(root) if recursive else ([("", run_checks(root))], 1)
+        projects, found = (
+            run_recursive(root, policy) if recursive else ([("", run_checks(root, policy))], 1)
+        )
     except Exception as e:  # noqa: BLE001 - last-resort guard; never leak raw output
         print(f"devready: internal error ({type(e).__name__})", file=sys.stderr)
         return EXIT_INTERNAL
+    if policy_error:  # one error; the run continued without the policy
+        projects[0][1].append(policy_error)
     if found > len(projects):
         print(f"devready: found {found} packages; checked the first {len(projects)}.",
               file=sys.stderr)  # fmt: skip
