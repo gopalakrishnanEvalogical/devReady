@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready score [--project DIR] [--only ID] [--skip ID] [--format text|json] [--badge] [--min N]`: a 0-100 readiness score (pass 1, warn 0.5, fail 0, equal weights; `skip` and `error` are not evaluated and left out, `n/a` when nothing was evaluated). `--format json` follows the new `docs/schema-score.json`, `--badge` prints a static SVG, `--min N` exits 1 below N. Derived data: the `check` report, ids and exit codes are unchanged.
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.

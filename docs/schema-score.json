@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DevReady score",
+  "description": "Output of `devready score --format json`. Derived from a check run; the `devready check` report schema is unchanged.",
+  "type": "object",
+  "required": ["schema_version", "score", "evaluated", "not_evaluated", "counts"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "score": {
+      "description": "0-100, or null when nothing was evaluated (never 100 in that case).",
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 100
+    },
+    "evaluated": { "description": "pass + warn + fail", "type": "integer", "minimum": 0 },
+    "not_evaluated": { "description": "skip + error", "type": "integer", "minimum": 0 },
+    "counts": {
+      "type": "object",
+      "required": ["pass", "warn", "fail", "skip", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "pass": { "type": "integer", "minimum": 0 },
+        "warn": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "skip": { "type": "integer", "minimum": 0 },
+        "error": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

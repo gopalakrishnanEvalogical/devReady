@@ -135,6 +135,7 @@ devready explain docker.daemon    # what a check means and how to fix it
 devready check --format junit     # or sarif, for CI
 devready check --only project --skip project.ports   # filter by id or prefix
 devready fix --plan               # suggested steps only; never runs them
+devready score                    # one 0-100 readiness number (formula below); --badge, --format json, --min N
 devready check --format json > baseline.json   # save a snapshot (commit it for a team baseline)
 devready check --baseline baseline.json          # show only what changed; fail only on new/worse failures
 devready init > .devready.json    # optional config: skip ids, require node/python, required env names
@@ -198,6 +199,15 @@ devready check --recursive --quiet  # only packages with something to report
 - **Output:** a text section per package. `--format json` follows [`docs/schema-multi.json`](docs/schema-multi.json): `{"schema_version": 1, "projects": [{"path": "apps/web", "results": [...]}]}`, where `"."` is the root and each `results` item has the usual shape. SARIF and JUnit name the package; `--baseline` takes a saved `--recursive` report and compares package by package.
 - **Exit code** `1` when any package has a `fail`.
 - **Limits:** at most 200 packages (stderr says when more were found). Only folder names made of letters, digits and `_ . @ + -` count, symlinks are never followed, and negated patterns (`!**/test/**`) are ignored.
+
+### Readiness score
+
+`devready score` turns a check run into one number, for dashboards, classrooms and a README badge.
+
+- **Formula:** every evaluated check counts equally: `pass` = 1, `warn` = 0.5, `fail` = 0. Score = `round(100 * points / evaluated)` (halves round up).
+- **Not evaluated:** `skip` and `error` mean DevReady could not tell, so they are left out and reported separately, never counted as passing. If nothing was evaluated the score is `n/a`, never 100.
+- **Options:** `--format json` ([`docs/schema-score.json`](docs/schema-score.json); the `check` JSON is unchanged), `--badge` prints a static SVG (fixed template, no external references), `--min N` exits `1` when the score is below `N` (or `n/a`), for CI gates. Without `--min` the exit code is `0`. `--only`, `--skip` and `--project` work as in `check`.
+- **Caveat:** one number hides detail. A `fail` on a check you do not need lowers it the same as one you do, and it says nothing about which checks matter. Use `devready check` for the details.
 
 ## Use it in CI (GitHub Actions)
 

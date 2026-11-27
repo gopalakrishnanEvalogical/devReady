@@ -24,6 +24,12 @@ EXIT_CODES = """exit codes (check):
   2  invalid usage
   3  internal error"""
 
+SCORE_EXIT_CODES = """exit codes (score):
+  0  score printed (and at or above --min, if given)
+  1  --min was given and the score is below it, or is n/a (nothing evaluated)
+  2  invalid usage
+  3  internal error"""
+
 
 _COLORS = {
     Status.PASS: "32",
@@ -134,6 +140,12 @@ def _sections_text(
     return "\n".join(lines)
 
 
+def _percent(value: str) -> int:
+    if not value.isdigit() or int(value) > 100:
+        raise argparse.ArgumentTypeError("must be a whole number from 0 to 100")
+    return int(value)
+
+
 def _selected(check_id: str, only: list[str], skip: list[str]) -> bool:
     return (not only or matches(check_id, only)) and not matches(check_id, skip)
 
@@ -176,11 +188,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     fix = sub.add_parser("fix", help="print suggested fixes (never runs them)")
     fix.add_argument("--plan", action="store_true", help="required: list steps without running")
+    score = sub.add_parser(
+        "score",
+        help="a 0-100 readiness score (pass 1, warn 0.5, fail 0; skip/error not counted)",
+        epilog=SCORE_EXIT_CODES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    score.add_argument("--format", choices=["text", "json"], default="text")
+    score.add_argument("--badge", action="store_true", help="print a static SVG badge instead")
+    score.add_argument(
+        "--min", type=_percent, metavar="N", help="exit 1 if the score is below N (0-100)"
+    )
     explain = sub.add_parser("explain", help="explain what a check id means")
     explain.add_argument("check_id")
     sub.add_parser("init", help="print a starter .devready.json (does not write it)")
     sub.add_parser("mcp", help="run as an MCP server over stdio")
-    for p in (check, fix):
+    for p in (check, fix, score):
         p.add_argument("--project", default=".", help="directory whose version pins to compare")
         p.add_argument("--only", action="append", default=[], metavar="ID", help="check id/prefix")
         p.add_argument("--skip", action="append", default=[], metavar="ID", help="check id/prefix")
@@ -238,6 +261,24 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "fix":
         print(fix_plan(projects[0][1]))
+        return EXIT_OK
+
+    if args.command == "score":
+        from devready.score import badge, compute, text
+
+        if args.badge and args.format == "json":
+            print("devready: --badge prints an SVG; it cannot be combined with --format json",
+                  file=sys.stderr)  # fmt: skip
+            return EXIT_USAGE
+        data = compute(projects[0][1])
+        if args.badge:
+            print(badge(data["score"]))
+        elif args.format == "json":
+            print(json.dumps(data, indent=2))
+        else:
+            print(text(data))
+        if args.min is not None and (data["score"] is None or data["score"] < args.min):
+            return EXIT_FAILED
         return EXIT_OK
 
     regressed = None
