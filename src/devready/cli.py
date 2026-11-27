@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import sys
@@ -11,9 +10,10 @@ from pathlib import Path
 
 from devready import __version__
 from devready.baseline import diff, load_baseline, load_project_baselines
-from devready.formats import fix_plan, junit, junit_projects, sarif_projects
+from devready.exporter import ExportError, render
+from devready.formats import fix_plan
 from devready.models import Result, Status
-from devready.runner import matches, report, report_projects, run_checks, run_recursive
+from devready.runner import matches, run_checks, run_recursive
 
 EXIT_OK, EXIT_FAILED, EXIT_USAGE, EXIT_INTERNAL = 0, 1, 2, 3
 
@@ -22,6 +22,13 @@ EXIT_CODES = """exit codes (check):
   0  no blocking failures
   1  a project requirement is not met
   2  invalid usage
+  3  internal error"""
+
+EXPORT_EXIT_CODES = """DevReady writes only the report files you ask for, inside --output-dir.
+exit codes (export):
+  0  files written, no blocking failures
+  1  files written, a project requirement is not met
+  2  invalid usage (unknown format, existing file without --force, unsafe --output-dir)
   3  internal error"""
 
 
@@ -176,11 +183,26 @@ def main(argv: list[str] | None = None) -> int:
     )
     fix = sub.add_parser("fix", help="print suggested fixes (never runs them)")
     fix.add_argument("--plan", action="store_true", help="required: list steps without running")
+    export = sub.add_parser(
+        "export",
+        help="run the checks once and write json, sarif and junit reports to a directory",
+        epilog=EXPORT_EXIT_CODES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    export.add_argument("--output-dir", required=True, metavar="DIR", help="where to write")
+    export.add_argument(
+        "--formats",
+        default="json,sarif,junit",
+        help="comma-separated: json,sarif,junit (files: report.json, report.sarif, "
+        "report.junit.xml)",
+    )
+    export.add_argument("--force", action="store_true", help="overwrite existing report files")
+    export.add_argument("--recursive", action="store_true", help="also check workspace packages")
     explain = sub.add_parser("explain", help="explain what a check id means")
     explain.add_argument("check_id")
     sub.add_parser("init", help="print a starter .devready.json (does not write it)")
     sub.add_parser("mcp", help="run as an MCP server over stdio")
-    for p in (check, fix):
+    for p in (check, fix, export):
         p.add_argument("--project", default=".", help="directory whose version pins to compare")
         p.add_argument("--only", action="append", default=[], metavar="ID", help="check id/prefix")
         p.add_argument("--skip", action="append", default=[], metavar="ID", help="check id/prefix")
@@ -218,6 +240,17 @@ def main(argv: list[str] | None = None) -> int:
         )
         return EXIT_USAGE
 
+    export_targets = None
+    if args.command == "export":
+        from devready.exporter import parse_formats, plan
+
+        try:  # validate before running any checks
+            formats = parse_formats(args.formats)
+            export_targets = plan(Path(args.output_dir), formats, args.force)
+        except ExportError as e:
+            print(f"devready: {e}", file=sys.stderr)
+            return EXIT_USAGE
+
     root = Path(args.project)
     if not root.is_dir():
         print(f"devready: not a directory: {args.project}", file=sys.stderr)
@@ -240,6 +273,23 @@ def main(argv: list[str] | None = None) -> int:
         print(fix_plan(projects[0][1]))
         return EXIT_OK
 
+    if export_targets is not None:
+        from devready.exporter import write
+
+        base = _sarif_base(args.project)
+        texts = {fmt: render(fmt, projects, recursive, base) for fmt, _ in export_targets}
+        try:
+            written = write(export_targets, texts)
+        except (ExportError, OSError) as e:
+            print(f"devready: {e if isinstance(e, ExportError) else 'could not write files'}",
+                  file=sys.stderr)  # fmt: skip
+            return EXIT_USAGE
+        print(f"Wrote {len(written)} report{'s' * (len(written) != 1)} from one run:")
+        for path in written:
+            print(f"  {path}")
+        failed = any(r.status is Status.FAIL for _, rs in projects for r in rs)
+        return EXIT_FAILED if failed else EXIT_OK
+
     regressed = None
     if args.baseline:
         base = _load_baseline(Path(args.baseline), recursive)
@@ -255,14 +305,10 @@ def main(argv: list[str] | None = None) -> int:
         shown = sum(len(rs) for _, rs in projects)
         print(f"Compared with baseline: {shown} of {total} changed.", file=sys.stderr)
     results = [r for _, rs in projects for r in rs]
-    if args.format == "json":
-        print(json.dumps(report_projects(projects) if recursive else report(results), indent=2))
-    elif args.format == "junit":
-        print(junit_projects(projects) if recursive else junit(results))
-    elif args.format == "sarif":
-        print(sarif_projects(projects, _sarif_base(args.project)))
-    else:
+    if args.format == "text":
         print(_sections_text(projects, args.quiet, _width(), _use_color()))
+    else:
+        print(render(args.format, projects, recursive, _sarif_base(args.project)))
     if regressed is not None:  # with a baseline only a new or worse FAIL breaks the build
         return EXIT_FAILED if regressed else EXIT_OK
     return EXIT_FAILED if any(r.status is Status.FAIL for r in results) else EXIT_OK

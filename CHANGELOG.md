@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready export --output-dir DIR [--formats json,sarif,junit] [--recursive] [--force]` runs the checks once and writes `report.json`, `report.sarif` and `report.junit.xml` from the same results. It is the only command that writes files: fixed names inside the directory you give, no overwrite without `--force`, symlinks refused, directory created only if its parent exists, nothing written on a usage error. Exit codes match `check`. `check` output is byte-identical to before (report rendering moved into `devready/exporter.py`).
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.

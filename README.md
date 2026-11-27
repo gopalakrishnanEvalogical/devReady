@@ -67,7 +67,7 @@ No changes were made to your system.
 | | |
 |---|---|
 | 🎯 **Project-aware** | Reads what *your project* declares (`.nvmrc`, `.node-version`, `.python-version`, `package.json` engines, `pyproject.toml` requires-python) and compares it to what is installed. Not just "is Node installed?" |
-| 🔒 **Read-only by design** | Never installs, edits or deletes. Never prints env values. No network. No telemetry. |
+| 🔒 **Read-only by design** | Never installs, edits or deletes. The only file it ever writes is the report files you ask for with `devready export`. Never prints env values. No network. No telemetry. |
 | 🤖 **Agent-ready** | Stable, versioned [JSON schema](docs/schema.json), a Claude Code plugin, an MCP server and `AGENTS.md`. Agents check first instead of guessing. |
 | 🛡️ **Prompt-injection safe** | Output contains only parsed versions and fixed text, never raw file or command output, so a hostile `package.json` can't smuggle instructions to your agent (tested). |
 | 📦 **Zero dependencies** | Pure Python standard library. Installs in a second, runs anywhere Python 3.10+ does. |
@@ -135,6 +135,7 @@ devready explain docker.daemon    # what a check means and how to fix it
 devready check --format junit     # or sarif, for CI
 devready check --only project --skip project.ports   # filter by id or prefix
 devready fix --plan               # suggested steps only; never runs them
+devready export --output-dir reports   # run once, write report.json, report.sarif, report.junit.xml
 devready check --format json > baseline.json   # save a snapshot (commit it for a team baseline)
 devready check --baseline baseline.json          # show only what changed; fail only on new/worse failures
 devready init > .devready.json    # optional config: skip ids, require node/python, required env names

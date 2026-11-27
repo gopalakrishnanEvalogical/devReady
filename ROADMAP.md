@@ -44,13 +44,14 @@ Principles: read-only, local-first, zero runtime dependencies, Python >= 3.10, n
 - [x] Monorepo `--recursive` (#43): workspace discovery, machine-wide checks once and project checks per package, every output format, `--baseline`, Action `recursive` input, MCP `recursive` argument.
 - [ ] Org `--policy` file (#44). Next; it can apply to every package `--recursive` finds.
 - [ ] VS Code extension (#45).
+- [x] `devready export`: one run, several report formats written to a directory you name.
 
 The Docker checks from the same plan have shipped. Design and PR breakdown: [docs/plans/features-5-8.md](docs/plans/features-5-8.md).
 
 ## Decided against
 
 - A separate `doctor` command (`check` + `explain` covers it).
-- A `details` result field, `--watch`, or DevReady writing any file (`init` and `--baseline` print or read only). Adding a result field needs `schema_version: 2`.
+- A `details` result field, `--watch`, or DevReady writing any file other than the report files `devready export` creates on request (`init` and `--baseline` print or read only). Adding a result field needs `schema_version: 2`.
 - Executing project code or installing software.
 
 ## Opt-in only (needs a design review first)

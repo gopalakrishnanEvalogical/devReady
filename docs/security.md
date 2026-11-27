@@ -1,6 +1,6 @@
 # Security model
 
-DevReady is read-only and local. See [SECURITY.md](../SECURITY.md) to report a vulnerability.
+DevReady is read-only and local; its one write is `devready export`, which creates only `report.json`, `report.sarif` and `report.junit.xml` inside the directory you give, never overwrites without `--force`, and never follows a symlink. See [SECURITY.md](../SECURITY.md) to report a vulnerability.
 
 - **Commands:** fixed argument lists, short timeouts, no shell. Never built from project content.
 - **Files:** only named files, regular files only, symlinks skipped, 1 MB cap, never executed.
