@@ -176,6 +176,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     fix = sub.add_parser("fix", help="print suggested fixes (never runs them)")
     fix.add_argument("--plan", action="store_true", help="required: list steps without running")
+    generate = sub.add_parser(
+        "generate", help="propose .nvmrc, .python-version and .devready.json (prints only)"
+    )
+    generate.add_argument("--project", default=".", help="project directory")
     explain = sub.add_parser("explain", help="explain what a check id means")
     explain.add_argument("check_id")
     sub.add_parser("init", help="print a starter .devready.json (does not write it)")
@@ -222,6 +226,17 @@ def main(argv: list[str] | None = None) -> int:
     if not root.is_dir():
         print(f"devready: not a directory: {args.project}", file=sys.stderr)
         return EXIT_USAGE
+    if args.command == "generate":
+        from devready.generate import propose, render
+
+        try:
+            entries = propose(root)
+        except Exception as e:  # noqa: BLE001 - last-resort guard; never leak raw output
+            print(f"devready: internal error ({type(e).__name__})", file=sys.stderr)
+            return EXIT_INTERNAL
+        print(render(entries))
+        return EXIT_OK
+
     # (path, results) pairs: one per package with --recursive, else one with path "".
     recursive = getattr(args, "recursive", False)  # `fix` has no --recursive
     try:

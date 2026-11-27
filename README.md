@@ -135,6 +135,7 @@ devready explain docker.daemon    # what a check means and how to fix it
 devready check --format junit     # or sarif, for CI
 devready check --only project --skip project.ports   # filter by id or prefix
 devready fix --plan               # suggested steps only; never runs them
+devready generate                 # propose .nvmrc, .python-version, .devready.json from this machine (prints only)
 devready check --format json > baseline.json   # save a snapshot (commit it for a team baseline)
 devready check --baseline baseline.json          # show only what changed; fail only on new/worse failures
 devready init > .devready.json    # optional config: skip ids, require node/python, required env names
@@ -198,6 +199,10 @@ devready check --recursive --quiet  # only packages with something to report
 - **Output:** a text section per package. `--format json` follows [`docs/schema-multi.json`](docs/schema-multi.json): `{"schema_version": 1, "projects": [{"path": "apps/web", "results": [...]}]}`, where `"."` is the root and each `results` item has the usual shape. SARIF and JUnit name the package; `--baseline` takes a saved `--recursive` report and compares package by package.
 - **Exit code** `1` when any package has a `fail`.
 - **Limits:** at most 200 packages (stderr says when more were found). Only folder names made of letters, digits and `_ . @ + -` count, symlinks are never followed, and negated patterns (`!**/test/**`) are ignored.
+
+### No pin files yet? Bootstrap them
+
+On a machine where the project works, run `devready generate`. It prints a proposed `.nvmrc` (Node major, for example `22`), `.python-version` (Python `major.minor`, for example `3.12`) and a `.devready.json` whose `require` matches them. Files that already exist are listed as "already exists, not replaced" and are never read or changed. DevReady writes nothing: create the files you want with the values shown, **review them first** (they record this one machine's versions), commit them, then everyone gets `devready check` against the same pins.
 
 ## Use it in CI (GitHub Actions)
 

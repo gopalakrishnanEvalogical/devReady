@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready generate [--project DIR]` prints proposed `.nvmrc` (Node major), `.python-version` (Python major.minor) and `.devready.json` (`require` built from them) from the tools installed on this machine, using the same detection as `check` (the project's `.venv` for Python). Print-only: it writes nothing, never reads or replaces existing files (listed as "already exists, not replaced"), and says "not found, nothing proposed" for a missing tool. Writing the files is left to you.
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.
