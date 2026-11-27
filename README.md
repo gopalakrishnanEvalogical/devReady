@@ -138,6 +138,7 @@ devready fix --plan               # suggested steps only; never runs them
 devready check --format json > baseline.json   # save a snapshot (commit it for a team baseline)
 devready check --baseline baseline.json          # show only what changed; fail only on new/worse failures
 devready init > .devready.json    # optional config: skip ids, require node/python, required env names
+devready init --from-ci .github/workflows/ci.yml > .devready.json   # take node/python versions from CI
 devready mcp                      # run as an MCP server over stdio
 devready --version
 ```
@@ -198,6 +199,20 @@ devready check --recursive --quiet  # only packages with something to report
 - **Output:** a text section per package. `--format json` follows [`docs/schema-multi.json`](docs/schema-multi.json): `{"schema_version": 1, "projects": [{"path": "apps/web", "results": [...]}]}`, where `"."` is the root and each `results` item has the usual shape. SARIF and JUnit name the package; `--baseline` takes a saved `--recursive` report and compares package by package.
 - **Exit code** `1` when any package has a `fail`.
 - **Limits:** at most 200 packages (stderr says when more were found). Only folder names made of letters, digits and `_ . @ + -` count, symlinks are never followed, and negated patterns (`!**/test/**`) are ignored.
+
+### Use the versions your CI already uses
+
+`devready init --from-ci .github/workflows/ci.yml` prints a `.devready.json` whose `require` matches the workflow's `node-version` and `python-version` (for example `20` becomes `>=20`). Like `devready init` it only prints: JSON goes to stdout (so `> .devready.json` works) and notes about anything it could not read go to stderr.
+
+It reads simple `key: value` lines (the standard library has no YAML parser), never runs anything, and **does not guess**. These are reported as "could not read" instead:
+
+- version matrices and lists, and `${{ ... }}` expressions (for example `python-version: ${{ matrix.python }}`)
+- aliases such as `lts/*` or `latest`
+- values that differ between jobs
+- `node-version-file: .nvmrc` and `python-version-file:` (reported as "already pinned by that file")
+- reusable workflows (`uses: org/repo/.github/workflows/x.yml`): their versions are not read
+
+Only GitHub Actions workflows are supported. Review the output before committing it.
 
 ## Use it in CI (GitHub Actions)
 

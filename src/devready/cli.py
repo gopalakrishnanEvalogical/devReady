@@ -178,7 +178,12 @@ def main(argv: list[str] | None = None) -> int:
     fix.add_argument("--plan", action="store_true", help="required: list steps without running")
     explain = sub.add_parser("explain", help="explain what a check id means")
     explain.add_argument("check_id")
-    sub.add_parser("init", help="print a starter .devready.json (does not write it)")
+    init = sub.add_parser("init", help="print a starter .devready.json (does not write it)")
+    init.add_argument(
+        "--from-ci",
+        metavar="WORKFLOW",
+        help="fill `require` from a GitHub Actions workflow file (node-version, python-version)",
+    )
     sub.add_parser("mcp", help="run as an MCP server over stdio")
     for p in (check, fix):
         p.add_argument("--project", default=".", help="directory whose version pins to compare")
@@ -194,6 +199,19 @@ def main(argv: list[str] | None = None) -> int:
         from devready.mcp_server import serve
 
         return serve()
+
+    if args.command == "init" and args.from_ci:
+        from devready.fromci import WorkflowError, load, parse, render
+
+        try:
+            require, notes = parse(load(Path(args.from_ci)))
+        except WorkflowError as e:
+            print(f"devready: {e}", file=sys.stderr)
+            return EXIT_USAGE
+        print(render(require))  # stdout stays valid JSON; what could not be read goes to stderr
+        for note in notes:
+            print(f"devready: {note}", file=sys.stderr)
+        return EXIT_OK
 
     if args.command == "init":
         from devready.checks.config import TEMPLATE

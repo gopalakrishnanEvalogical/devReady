@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New `devready init --from-ci WORKFLOW` prints a starter `.devready.json` with `require` taken from a GitHub Actions workflow's `node-version` and `python-version` (`20` becomes `>=20`). Print-only: JSON on stdout, notes on stderr. Simple line parsing, nothing is executed or guessed: matrices, lists, `${{ }}` expressions, `lts/*`-style aliases, values that differ between jobs and reusable workflows are reported as "could not read"; `*-version-file` is reported as "already pinned by" that file. Plain `devready init` is unchanged.
 - Check Terraform pins from `.terraform-version` and `.tool-versions`; warn on mismatches.
 - Read Java version pins from `.sdkmanrc`, after `.java-version`, without executing SDKMAN configuration.
 - Check Deno pins from `.dvmrc` and `.tool-versions`; warn on mismatches.
